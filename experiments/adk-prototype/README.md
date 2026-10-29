@@ -158,3 +158,34 @@ Run just these checks:
 ```sh
 go test -C experiments/adk-prototype -run '^TestOpenAI(StreamedToolRoundTrip|ToolStreamFailuresDoNotExecuteTools)$' -v -count=1
 ```
+
+
+## Follow-up: custom request-budget hook
+
+A harness-owned `BudgetGate` runs through ADK's before-model callback, with ADK's stock compaction disabled for these probes. The first reserve test failed before the hook enforced an output limit; threshold tests then failed before the compaction path was added. All 18 top-level prototype tests now pass, including their parameterized subcases.
+
+Verified with deterministic count fixtures:
+
+- Default output reserve is 25%, capped by the supplied model output limit, and written to the model request configuration before generation.
+- A 50% override changes the allowance; invalid percentages are rejected before the model is called.
+- For a 1000-unit context with 250 reserved output, input capacity is 750: 674 proceeds, 675 triggers compaction, and even an initial input of 800 must compact before generation.
+- The injected compactor receives a 450-unit post-compaction target (60% of input capacity) and a 300-unit recent-history allowance (40%). The candidate is recounted before it is used.
+- Summarization errors and candidates that still exceed the prototype target get three total attempts, then generation is blocked. Original transcript and pending prompt remain available; capture records a failed turn.
+- The callback sees instructions and tool schemas and runs again after a tool result. In the tool-loop test, the injected compactor removes an older exchange but retains the active prompt and its complete call/result group before the second model call.
+- Failed compaction candidates are deep-copied request data rather than mutations of original messages. Summary calls do not go through this same hook recursively: the injected compactor owns its own bounded implementation.
+
+This establishes the integration point, **not a production token-budget implementation**:
+
+- Counts are explicit deterministic fixture values, not measured tokenizer output or provider counts. Real request serialization, tokenizer choice, estimation margin, and model capability discovery remain unimplemented.
+- Summary generation is injected. The 40% recent-history allowance is passed to it, but a general token-based selection algorithm is not implemented here.
+- This conservative prototype enforces the 60% target strictly. The agreed soft-target exception for large mandatory instructions/current prompts still needs implementation; the experiment must not silently replace that product policy.
+- Compacted request state is not yet stored as the session's durable checkpoint, so future turns can require compaction again. There is no settings UI, transactional budget reduction, memory exclusion flow, or new-session offer after failure in this prototype.
+- The gate is configured with caller-supplied capability values and rounding choices for the experiment. These are not approved production defaults.
+
+Run these probes:
+
+```sh
+go test -C experiments/adk-prototype -run '^TestBudget' -v -count=1
+```
+
+Conclusion: ADK supplies a usable pre-request enforcement hook, including within tool loops. Our budget and recovery behavior should remain harness-owned; enabling ADK's default compaction would not implement it automatically.

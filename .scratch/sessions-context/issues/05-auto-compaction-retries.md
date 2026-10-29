@@ -45,3 +45,7 @@ Features assigned to other tickets, general file edits, shell execution, MCP, se
 ## Comments
 
 No implementation started.
+
+### ADK budget-hook evidence
+
+Branch `prototype/adk-evaluation` has [custom budget integration probes](../../../experiments/adk-prototype/README.md) verifying reserve capping/overrides, exact 90% triggering, candidate recounting, three-attempt blocking, and before-model checks after tool results. These use deterministic token counts and an injected compactor. Real tokenization, general retention selection, soft-target relaxation, persisted compacted context, and user-facing recovery remain outstanding; this ticket is not completed by the experiment.
