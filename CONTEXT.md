@@ -8,7 +8,7 @@ A conversational harness that sends requests to a model and manages the conversa
 A distinct conversation with its own history. Starting a new session leaves previous sessions' saved conversations on disk.
 
 **Transcript**:
-The durable record of a session's conversation. Starting a new session with `/clear` does not delete the preceding session's transcript.
+The durable record of a session's conversation. Starting a new session does not delete the preceding session's transcript. The current `/clear` command resets active context within the same session and retains its transcript; a future change to session identity remains a separate product decision.
 
 **Project memory**:
 Information explicitly requested by the user to be remembered for the project across sessions. Ordinary conversation does not automatically become project memory.

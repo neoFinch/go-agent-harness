@@ -2,7 +2,7 @@
 
 One file per ticket. Each ticket links its source spec, covered user stories, prerequisites, acceptance criteria, and TDD validation.
 
-All tickets are initially `ready-for-agent`; a ticket is actionable only after every `Blocked by` prerequisite is resolved. Claim before work, then mark resolved after acceptance checks. This index does not authorize starting implementation.
+Tickets were initially `ready-for-agent`; a ticket is actionable only after every `Blocked by` prerequisite is resolved. Claim before work, then mark resolved after acceptance checks. This index does not authorize starting implementation.
 
 ## IDs and dependencies
 
@@ -16,7 +16,7 @@ The dependency graph and user-story coverage below remain unchanged. S01 now mig
 
 ## Suggested order
 
-Start with S01. S01–S03 establish a persisted, budgeted conversation. Then compaction, read/search, and explicit memory can advance as their prerequisites allow; execution remains incremental and no concurrent agents are implied.
+S01 is resolved: the real CLI runs through ADK and persists streamed turns. S02 (session discovery/resume) is the next unblocked slice. S01–S03 establish a persisted, budgeted conversation. Then compaction, read/search, and explicit memory can advance as their prerequisites allow; execution remains incremental and no concurrent agents are implied.
 
 | Ticket | Outcome | Blocked by |
 |---|---|---|

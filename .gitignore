@@ -11,3 +11,6 @@ coverage.out
 
 # OS metadata
 .DS_Store
+
+# Project-local session data
+/.harness/

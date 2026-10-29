@@ -2,7 +2,7 @@
 
 Question: can ADK supply the runtime for our Go harness while preserving our agreed session, tool, context, and memory policies?
 
-Evaluated on 2026-10-29 using **google.golang.org/adk/v2 v2.6.0**, the latest tagged release returned by the Go module registry during this run. This module requires Go 1.26.6 or later. The installed system Go was 1.26.3; Go downloaded the compatible toolchain automatically. The root harness module and CLI are unchanged.
+Evaluated on 2026-10-29 using **google.golang.org/adk/v2 v2.6.0**, the latest tagged release returned by the Go module registry during this run. This module requires Go 1.26.6 or later. The installed system Go was 1.26.3; Go downloaded the compatible toolchain automatically. At evaluation time the root harness module and CLI were unchanged. S01 has since migrated the real CLI; see the [root README](../../README.md).
 
 This is an isolated nested module, saved on branch `prototype/adk-evaluation`. It is evidence for an adoption decision, not the implementation of S01 or a replacement production harness. SQLite is an experiment choice, not an approved permanent storage format.
 
