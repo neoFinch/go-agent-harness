@@ -93,7 +93,7 @@ The last probe passes by verifying a known limitation. It is not a claim that AD
 
 ADK is a promising runtime dependency, but these probes do not justify replacing all 16 tickets or adopting its defaults unchanged. Keep our policies in a small harness-owned orchestration layer and validate ADK integration underneath it.
 
-Before adoption, next useful probes are streaming tool arguments through the OpenAI adapter, interrupted/resumed pending calls, custom token-driven compaction preserving call/result groups, and external permission resumption. A live provider check can follow explicit setup; none was performed here.
+Fragmented tool arguments through the OpenAI adapter are now covered by the follow-up below. Remaining adoption probes include interrupted/resumed pending calls, custom token-driven compaction preserving call/result groups, and external permission resumption. A live provider check can follow explicit setup; none was performed here.
 
 No production specification or ticket was marked implemented. S01 has a pointer to this evidence on the prototype branch.
 
@@ -130,3 +130,31 @@ Remaining limitations:
 - Torn/corrupt JSON records are reported as errors, not automatically repaired. Crash/power-loss recovery has not been simulated.
 - Syncing each chunk favors evidence of durability over throughput; batching policy requires a later decision.
 - The interruption tests use a scripted ADK model. Live-provider disconnections, token-limit truncation, and incomplete terminal responses still need provider-specific tests.
+
+
+## Follow-up: OpenAI streamed tool round-trip
+
+The suite now contains 13 top-level tests, including two failure subcases. All pass without paid model calls.
+
+The new round-trip probe drives the official ADK OpenAI Responses adapter through a local HTTP server, rather than bypassing it with a scripted ADK model:
+
+1. The first request advertises the file-read tool schema.
+2. The server streams a function-call item and JSON arguments split across three deltas (including the file name split across chunks).
+3. The argument-done event omits the full argument payload and the completion event carries no replacement call, so correct execution depends on assembling the deltas rather than copying a complete call from the final event.
+4. ADK invokes one real, bounded project-file read with the reconstructed path and line range.
+5. The second HTTP request includes exactly one call and one result with the original provider call ID; its decoded result contains the actual second file line.
+6. The final answer is delivered as two visible chunks and the capture journal records a single completed answer without duplication.
+
+Failure subcases prove:
+
+- Malformed argument JSON at argument completion produces an error without tool execution.
+- A response body interrupted before argument completion produces a real HTTP unexpected EOF, without tool execution.
+- Neither failure starts a follow-up model request, displays tool arguments as answer text, or stores a completed tool call. The capture journal retains a failed turn and error information.
+
+These are synthetic protocol-contract checks, not a claim about live-provider model behavior, every valid Responses event ordering, or recovery after a tool has already executed. The file reader remains a bounded test fixture, not the production tool implementation. No change to the real CLI or production feature status is implied.
+
+Run just these checks:
+
+```sh
+go test -C experiments/adk-prototype -run '^TestOpenAI(StreamedToolRoundTrip|ToolStreamFailuresDoNotExecuteTools)$' -v -count=1
+```

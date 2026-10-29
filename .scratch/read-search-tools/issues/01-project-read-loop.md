@@ -46,3 +46,7 @@ Features assigned to other tickets, general file edits, shell execution, MCP, se
 ## Comments
 
 No implementation started.
+
+### ADK provider integration evidence
+
+On branch `prototype/adk-evaluation`, the [provider tool-stream probe](../../../experiments/adk-prototype/provider_tool_test.go) verifies fragmented Responses arguments through the official ADK adapter, one bounded real file read, preserved call/result IDs in the second HTTP request, and streamed answer capture. Malformed argument JSON and an interrupted HTTP body both execute no tool and produce no follow-up model call. This uses local HTTP fixtures, not live OpenAI; T01 remains unimplemented for the real harness.
