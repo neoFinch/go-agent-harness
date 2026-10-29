@@ -5,15 +5,19 @@ Type: task
 Blocked by: [S03](../../sessions-context/issues/03-budget-settings-preflight.md)
 Spec: [feature specification](../spec.md), user stories 1, 3, 10, 13, 14, 18, 23, 24, 25
 
+## ADK adoption guidance
+
+Follow [ADR-0001](../../../docs/adr/0001-adopt-adk-go-runtime.md). Reuse ADK's runner, model adapter, function tools, and session store. Implement only the application behavior assigned to this ticket; passing prototype checks do not complete production acceptance criteria.
+
 ## Outcome
 
 Complete the first real tool turn: the model requests a project file range, receives it, and streams an answer.
 
 ## Scope
 
-- Evolve the model contract to represent tool definitions, fragmented tool arguments, stable call IDs, results, and completion.
+- Reuse ADK function tools, official provider translation, stable call IDs, and Runner dispatch. Register the actual bounded file reader; do not write another fragmented-argument parser or tool loop.
 - Wire a line-range file-read tool into the session controller with project scope checks and a conservative response cap from the start.
-- Execute calls sequentially and return structured errors associated with their call IDs.
+- Install the explicit sequential task-runner override and return structured errors through ADK's call/result contracts.
 - Apply preflight to every follow-up request, and enforce the default 10-call stop immediately; configurable continuation arrives in T06.
 
 ## Acceptance criteria
@@ -29,11 +33,11 @@ Complete the first real tool turn: the model requests a project file range, rece
 
 First integration test drives a tool turn through the controller and temporary project. Add local HTTP streaming fixtures for fragmented arguments and ID/result mapping. No real filesystem outside fixtures or external API is used.
 
-Exercise observable session behavior through the controller. Keep provider SDK details behind the adapter; do not add implementation-mirroring tests or use paid API calls for automated validation.
+Exercise observable session behavior through the controller. Use the official ADK provider adapter and keep provider SDK details out of terminal rendering; do not add implementation-mirroring tests or use paid API calls for automated validation.
 
 ## Decisions to resolve in this slice
 
-- Choose the minimum harness-owned event and tool-result contract, with no SDK types leaked into orchestration.
+- Use ADK contracts directly inside the runtime integration; introduce only the small controller/UI events actually needed by the CLI, not parallel copies of every framework type.
 - Define line numbering, range endpoints, invalid-range behavior, and safe initial caps; do not ship unbounded reads while waiting for T02.
 - Protect stored transcripts through generic file tools even when physically inside the project.
 

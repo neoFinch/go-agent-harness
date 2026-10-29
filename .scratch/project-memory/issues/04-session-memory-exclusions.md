@@ -5,6 +5,10 @@ Type: task
 Blocked by: [M03](03-forget-memory.md), [S06](../../sessions-context/issues/06-transactional-budget-reduction.md)
 Spec: [feature specification](../spec.md), user stories 14, 15, 16, 17, 18, 19, 20, 21, 22
 
+## ADK adoption guidance
+
+Follow [ADR-0001](../../../docs/adr/0001-adopt-adk-go-runtime.md). Reuse ADK's runner, model adapter, function tools, and session store. Implement only the application behavior assigned to this ticket; passing prototype checks do not complete production acceptance criteria.
+
 ## Outcome
 
 When memories still prevent fit after compaction, users decide what to exclude without deleting project records.
@@ -30,7 +34,7 @@ When memories still prevent fit after compaction, users decide what to exclude w
 
 TDD deterministic pressure fixtures across compaction, exclusion, resume, new sessions, and budget reduction rollback. Observe model input and persisted user-facing state.
 
-Exercise observable session behavior through the controller. Keep provider SDK details behind the adapter; do not add implementation-mirroring tests or use paid API calls for automated validation.
+Exercise observable session behavior through the controller. Use the official ADK provider adapter and keep provider SDK details out of terminal rendering; do not add implementation-mirroring tests or use paid API calls for automated validation.
 
 ## Decisions to resolve in this slice
 

@@ -8,13 +8,19 @@ All tickets are initially `ready-for-agent`; a ticket is actionable only after e
 
 S = sessions/context, T = read/search tools, M = project memory. Numeric IDs are local to each feature; linked prefixed IDs disambiguate cross-feature dependencies.
 
+## Accepted runtime
+
+[ADR-0001](../docs/adr/0001-adopt-adk-go-runtime.md) adopts ADK Go. The 18-test experiment is evidence, not production completion. Reuse ADK's runtime, official OpenAI adapter, function tools, session service, and compatible summarization machinery. Keep custom budget, permission, memory, interrupted-output capture, and recovery policies in the harness.
+
+The dependency graph and user-story coverage below remain unchanged. S01 now migrates the actual CLI onto ADK and its SQLite backend; do not rebuild the framework features it supplies.
+
 ## Suggested order
 
 Start with S01. S01–S03 establish a persisted, budgeted conversation. Then compaction, read/search, and explicit memory can advance as their prerequisites allow; execution remains incremental and no concurrent agents are implied.
 
 | Ticket | Outcome | Blocked by |
 |---|---|---|
-| [S01](sessions-context/issues/01-persist-streamed-session.md) | Persist a streamed conversation through the session controller | none |
+| [S01](sessions-context/issues/01-persist-streamed-session.md) | Integrate ADK into the CLI and persist streamed sessions | none |
 | [S02](sessions-context/issues/02-new-list-resume.md) | Start, discover, and resume saved sessions | S01 |
 | [S03](sessions-context/issues/03-budget-settings-preflight.md) | Enforce session context budgets and output reserves | S02 |
 | [S04](sessions-context/issues/04-manual-compaction.md) | Compact active context while retaining the transcript | S03 |

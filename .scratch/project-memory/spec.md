@@ -37,7 +37,7 @@ Save project memory only on explicit user request, include eligible memories acr
 
 ## Implementation Decisions
 
-- Project memory is a dedicated persistence capability coordinated by the session controller, distinct from deferred general-purpose file-editing tools.
+- Project memory remains a dedicated harness policy coordinated by the session controller around ADK. Reuse ADK session state for per-session exclusions where appropriate, but do not enable automatic memory ingestion merely because ADK supports it. Memory writes remain distinct from deferred general-purpose file-editing tools.
 - Save only when the user explicitly requests it. Quoted text, file content, retrieved transcripts, and model suggestions do not independently authorize persistent writes.
 - Give saved memories stable IDs and a project association. Store session exclusion references separately from project memory records.
 - Include non-excluded saved memories in requests by default; account for them within input capacity. Memory content is not an unbounded addition outside the context budget.
@@ -67,6 +67,8 @@ Save project memory only on explicit user request, include eligible memories acr
 - Claims of complete model forgetting when the information remains in active conversation or archived messages.
 
 ## Further Notes
+
+- Runtime decision: [ADR-0001 — adopt ADK Go](../../docs/adr/0001-adopt-adk-go-runtime.md). This supersedes earlier build-from-scratch implementation assumptions without changing the agreed user stories.
 
 - Related specs: [sessions/context](../sessions-context/spec.md) and [read/search tools](../read-search-tools/spec.md).
 - Open details: project identity and storage location; memory size limits; duplicate detection; how natural-language save requests are recognized; conflict detection; unknown IDs; malformed records; and handling changed or deleted records referenced by old session exclusions.

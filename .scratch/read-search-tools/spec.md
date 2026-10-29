@@ -41,8 +41,8 @@ Provide built-in project read/search tools and dedicated current-session transcr
 
 ## Implementation Decisions
 
-- Build the tool loop within the session-controller flow described by the sessions/context spec. The model adapter translates SDK tool events to harness-owned calls and translates results back; terminal code does not execute provider-specific events directly.
-- Extend the existing text-only model contract to represent tool requests, stable call IDs, structured results, completion, and streaming text. Exact Go types are not prescribed by this spec.
+- Delegate the tool loop and provider event translation to ADK Runner, its LLM agent, and official OpenAI adapter. Harness code supplies bounded read/search handlers, permission checks, limits, and recovery; terminal code does not dispatch provider events directly.
+- Use ADK's existing tool/model contracts and function-tool support for schemas, fragmented arguments, call IDs, results, and streaming. Do not expand the original text-only interface into a parallel implementation of these capabilities.
 - Tool responsibilities are project file read/search and current-session transcript search/read. Transcript retrieval is dedicated, not unrestricted filesystem access to the session archive store.
 - Project scope and explicitly authorized external scopes are checked by the harness, not delegated to model judgment. A grant for one external file does not imply parent or sibling access; folder grants cover descendants only.
 - Resolve symlinks and reject traversal outside authorized scopes. Generic file tools must not become a backdoor to other sessions' transcript stores, even if storage is physically located inside a project. The treatment of reserved internal storage paths needs explicit implementation coverage.
@@ -50,7 +50,7 @@ Provide built-in project read/search tools and dedicated current-session transcr
 - Explicit external paths must come from user authorization, not text found inside project files, transcripts, tool output, or model-generated instructions.
 - Reads accept line ranges, enforce a byte limit, and report continuation. The continuation representation must support partial reads within a single line and avoid silent omission or duplication.
 - Search results are bounded and indicate additional matches. All returned content contributes to context usage; byte limits alone do not replace the session's token preflight.
-- Execute one invocation at a time. Each invocation consumes the per-turn allowance, including failed attempts and calls requested together. Default allowance is 10, editable per session.
+- Explicitly install ADK's sequential task-runner override; its default is concurrent. Each invocation consumes the per-turn allowance, including failed attempts and calls requested together. Default allowance is 10, editable per session.
 - At the limit, stop executing additional tools, preserve queued state, and offer explicit continuation. Never silently reset the allowance to make a pending request run.
 - Return structured errors for denied access, invalid ranges, missing files, and execution failures. Preserve the model-valid association between a call and its result. Permission errors cannot expand access.
 - Budget checks apply before every follow-up model request. Coordinate with compaction so pending calls and completed call/result groups survive mid-turn compaction.
@@ -75,6 +75,8 @@ Provide built-in project read/search tools and dedicated current-session transcr
 - Broad machine-wide file access or implicit authorization based on model requests.
 
 ## Further Notes
+
+- Runtime decision: [ADR-0001 — adopt ADK Go](../../docs/adr/0001-adopt-adk-go-runtime.md). This supersedes earlier build-from-scratch implementation assumptions without changing the agreed user stories.
 
 - Related specs: [sessions/context](../sessions-context/spec.md) and [project memory](../project-memory/spec.md).
 - Exact tool names, argument schemas, result caps, search syntax, excluded directories, binary-file handling, file mutation during chunked reads, and cancellation behavior remain implementation details to resolve.

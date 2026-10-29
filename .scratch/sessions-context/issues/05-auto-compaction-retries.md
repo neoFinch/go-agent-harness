@@ -5,13 +5,17 @@ Type: task
 Blocked by: [S04](04-manual-compaction.md)
 Spec: [feature specification](../spec.md), user stories 14, 15, 16, 24, 25, 26, 29
 
+## ADK adoption guidance
+
+Follow [ADR-0001](../../../docs/adr/0001-adopt-adk-go-runtime.md). Reuse ADK's runner, model adapter, function tools, and session store. Implement only the application behavior assigned to this ticket; passing prototype checks do not complete production acceptance criteria.
+
 ## Outcome
 
 Make long-running conversations continue automatically while keeping failure recovery explicit.
 
 ## Scope
 
-- Use the common preflight to trigger compaction at input usage >= 90% of input capacity, including pending input.
+- Use ADK's before-model hook as the common preflight, triggering at input usage >= 90% of input capacity, including pending input. Ensure ADK's stock continue-on-compaction-error path cannot bypass our bounded retries or hard input limit.
 - Display progress and retry failed automatic compaction for three total attempts.
 - After exhaustion preserve the pending prompt and session and offer a user-controlled new-session action.
 - Prevent immediate compaction loops when a valid soft-target exception cannot reduce below the trigger.
@@ -29,7 +33,7 @@ Make long-running conversations continue automatically while keeping failure rec
 
 TDD deterministic threshold, retry-count, no-progress, rollback, and exact-once continuation tests at the controller. Include input that jumps directly past the hard limit.
 
-Exercise observable session behavior through the controller. Keep provider SDK details behind the adapter; do not add implementation-mirroring tests or use paid API calls for automated validation.
+Exercise observable session behavior through the controller. Use the official ADK provider adapter and keep provider SDK details out of terminal rendering; do not add implementation-mirroring tests or use paid API calls for automated validation.
 
 ## Decisions to resolve in this slice
 

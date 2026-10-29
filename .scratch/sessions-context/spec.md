@@ -45,9 +45,9 @@ Persist each session's transcript separately from its active context. Let users 
 
 ## Implementation Decisions
 
-- Introduce a session-controller module as the main behavioral test seam. It owns orchestration of turns, settings, persistence, compaction, permission prompts, and continuation. Keep terminal rendering separate from this orchestration.
-- Evolve the existing harness-owned model interface rather than leaking SDK request types into the session controller. The provider adapter must support output limits, usage reporting, streamed text, and eventually tool events required by the related tool spec.
-- Keep a durable transcript and a persisted active-context checkpoint. Compaction replaces active context, not original transcript records. Preserve stable message references usable by history tools.
+- Use ADK Go as the runtime. A small harness-owned session controller remains the main behavioral test seam for CLI actions, settings, permissions, persistence coordination, and recovery; delegate the model/tool execution loop to ADK Runner and its LLM agent. Keep terminal rendering separate.
+- Reuse ADK's official OpenAI adapter and model interface for output limits, usage, streamed text, and tool events. Retire the original text-only model interface if redundant; do not build a second provider adapter or framework-neutral runtime abstraction without an actual requirement. Terminal rendering remains independent of provider SDK details.
+- Reuse ADK's session service and initially its SQLite backend for durable structured events and session state. Retain a transcript view, a compatible active-context checkpoint, and supplemental interrupted-output capture as needed. Define their recovery relationship; do not duplicate ADK's entire session store. Compaction preserves original records and stable references.
 - Compute effective output reserve as the smaller of context budget multiplied by the configured percentage and the model's maximum output allowance. Input capacity is total context budget minus effective reserve. Enforce the output allowance in the provider request.
 - Count all request input: instructions, included project memories, tool definitions, message content, summaries, tool calls/results, retrieved excerpts, and the current prompt. Check model compatibility as well as the selected budget.
 - Trigger at input usage greater than or equal to 90% of input capacity. Target at most 60% after compaction; retain newest complete exchanges up to 40% subject to the total target. These percentages refer to input capacity, not the total context budget.
@@ -79,6 +79,8 @@ Persist each session's transcript separately from its active context. Let users 
 - Rewriting the harness in Rust.
 
 ## Further Notes
+
+- Runtime decision: [ADR-0001 — adopt ADK Go](../../docs/adr/0001-adopt-adk-go-runtime.md). This supersedes earlier build-from-scratch implementation assumptions without changing the agreed user stories.
 
 - Related specs: [read/search tools](../read-search-tools/spec.md) and [project memory](../project-memory/spec.md).
 - Agreed direction is captured in the repository's context-management design notes. The glossary remains the authority for domain vocabulary.

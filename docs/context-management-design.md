@@ -2,6 +2,8 @@
 
 ## Agreed direction
 
+- Adopt ADK Go as the runtime per ADR-0001: reuse runner/model/tool/session infrastructure; retain harness-specific policies. Production CLI migration starts in S01; the nested experiment is not itself the migrated product.
+
 - Support starting a new session and resuming an existing saved session in the first version; defer forking.
 - Resuming continues the same session and appends new messages to its transcript.
 - Persist compacted context alongside the transcript so resuming does not require generating a new summary each time.

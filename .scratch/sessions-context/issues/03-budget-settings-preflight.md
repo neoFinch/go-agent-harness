@@ -5,6 +5,10 @@ Type: task
 Blocked by: [S02](02-new-list-resume.md)
 Spec: [feature specification](../spec.md), user stories 9, 10, 11, 12, 13, 14, 29
 
+## ADK adoption guidance
+
+Follow [ADR-0001](../../../docs/adr/0001-adopt-adk-go-runtime.md). Reuse ADK's runner, model adapter, function tools, and session store. Implement only the application behavior assigned to this ticket; passing prototype checks do not complete production acceptance criteria.
+
 ## Outcome
 
 Let users see and configure a real request budget before the model is called.
@@ -13,7 +17,7 @@ Let users see and configure a real request budget before the model is called.
 
 - Add settings display and updates for total context budget and output percentage, with a 25% output default.
 - Compute effective output reserve using the model output cap and enforce it in provider requests.
-- Count the actual assembled request input, including instructions and any future tool or memory content, through one preflight path.
+- Count the actual assembled ADK request input, including instructions, schemas, and any future tool or memory content, through one before-model preflight path. Replace deterministic prototype counts with the selected real counting strategy.
 - Restore settings on resume and validate model capabilities and input capacity before generation.
 - At this stage, explicitly block a required budget reduction/compaction rather than sending an oversized request; S06 supplies the full change workflow.
 
@@ -30,7 +34,7 @@ Let users see and configure a real request budget before the model is called.
 
 TDD through the controller with deterministic counts at exact capacity edges; use a local HTTP stub to verify provider output-limit encoding, usage extraction, and streaming failure handling.
 
-Exercise observable session behavior through the controller. Keep provider SDK details behind the adapter; do not add implementation-mirroring tests or use paid API calls for automated validation.
+Exercise observable session behavior through the controller. Use the official ADK provider adapter and keep provider SDK details out of terminal rendering; do not add implementation-mirroring tests or use paid API calls for automated validation.
 
 ## Decisions to resolve in this slice
 

@@ -5,13 +5,17 @@ Type: task
 Blocked by: [S01](01-persist-streamed-session.md)
 Spec: [feature specification](../spec.md), user stories 3, 4, 5, 6, 7, 8
 
+## ADK adoption guidance
+
+Follow [ADR-0001](../../../docs/adr/0001-adopt-adk-go-runtime.md). Reuse ADK's runner, model adapter, function tools, and session store. Implement only the application behavior assigned to this ticket; passing prototype checks do not complete production acceptance criteria.
+
 ## Outcome
 
 Let a user leave a conversation and continue it later with the same identity and settings.
 
 ## Scope
 
-- Expose new-session, listing, and resume operations through the controller and CLI.
+- Expose new-session, listing, and resume operations through the controller and CLI using ADK session-service Create/List/Get operations; do not implement duplicate session CRUD.
 - Restore settings and active context and append new messages to the same transcript.
 - Persist the active-context checkpoint independently of original records so later compaction can update it.
 - New sessions inherit project defaults; session changes do not rewrite defaults or sibling sessions.
@@ -29,7 +33,7 @@ Let a user leave a conversation and continue it later with the same identity and
 
 Use temporary persisted sessions across two controller instances and inspect subsequent scripted-model requests. Test invalid IDs and corrupt/incomplete state without relying on private serialization layout.
 
-Exercise observable session behavior through the controller. Keep provider SDK details behind the adapter; do not add implementation-mirroring tests or use paid API calls for automated validation.
+Exercise observable session behavior through the controller. Use the official ADK provider adapter and keep provider SDK details out of terminal rendering; do not add implementation-mirroring tests or use paid API calls for automated validation.
 
 ## Decisions to resolve in this slice
 

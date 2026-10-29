@@ -5,6 +5,10 @@ Type: task
 Blocked by: [T04](04-resume-permission-dialog.md), [T05](05-current-session-history.md), [S05](../../sessions-context/issues/05-auto-compaction-retries.md)
 Spec: [feature specification](../spec.md), user stories 18, 19, 20, 21, 22, 23, 24, 25
 
+## ADK adoption guidance
+
+Follow [ADR-0001](../../../docs/adr/0001-adopt-adk-go-runtime.md). Reuse ADK's runner, model adapter, function tools, and session store. Implement only the application behavior assigned to this ticket; passing prototype checks do not complete production acceptance criteria.
+
 ## Outcome
 
 Keep long tool turns predictable when limits or context pressure interrupt execution.
@@ -14,7 +18,7 @@ Keep long tool turns predictable when limits or context pressure interrupt execu
 - Expose the per-turn tool limit in session settings with a default of 10.
 - Preserve queued invocations, errors, completed results, and pending prompt on limit exhaustion; require explicit continuation.
 - Integrate mid-turn automatic compaction while preserving model-valid call/result groups and unexecuted calls.
-- Keep all invocations sequential and count failed invocations, including multiple requests from one model response.
+- Keep ADK's explicit sequential task runner installed and use before-tool/related hooks to count each failed or successful invocation, including multiple requests from one response. Do not confuse model-call counts with tool-invocation counts.
 
 ## Acceptance criteria
 
@@ -29,7 +33,7 @@ Keep long tool turns predictable when limits or context pressure interrupt execu
 
 TDD scripted multi-call turns crossing both limits and compaction thresholds, including denial, failure, resume state, and explicit continuation. Verify order and exact-once execution through observable results.
 
-Exercise observable session behavior through the controller. Keep provider SDK details behind the adapter; do not add implementation-mirroring tests or use paid API calls for automated validation.
+Exercise observable session behavior through the controller. Use the official ADK provider adapter and keep provider SDK details out of terminal rendering; do not add implementation-mirroring tests or use paid API calls for automated validation.
 
 ## Decisions to resolve in this slice
 

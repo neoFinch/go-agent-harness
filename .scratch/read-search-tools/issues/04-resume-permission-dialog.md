@@ -5,6 +5,10 @@ Type: task
 Blocked by: [T03](03-external-path-permissions.md), [S02](../../sessions-context/issues/02-new-list-resume.md)
 Spec: [feature specification](../spec.md), user stories 15, 16, 17
 
+## ADK adoption guidance
+
+Follow [ADR-0001](../../../docs/adr/0001-adopt-adk-go-runtime.md). Reuse ADK's runner, model adapter, function tools, and session store. Implement only the application behavior assigned to this ticket; passing prototype checks do not complete production acceptance criteria.
+
 ## Outcome
 
 Resuming saved work must not silently restore machine-file access.
@@ -27,7 +31,7 @@ Resuming saved work must not silently restore machine-file access.
 
 Create, authorize, stop, and resume using distinct controller instances with persisted session metadata. Assert choices and access on the next reads and searches.
 
-Exercise observable session behavior through the controller. Keep provider SDK details behind the adapter; do not add implementation-mirroring tests or use paid API calls for automated validation.
+Exercise observable session behavior through the controller. Use the official ADK provider adapter and keep provider SDK details out of terminal rendering; do not add implementation-mirroring tests or use paid API calls for automated validation.
 
 ## Decisions to resolve in this slice
 
