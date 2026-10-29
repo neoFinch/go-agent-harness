@@ -1,0 +1,13 @@
+# Local credentials
+.env
+.env.*
+!.env.example
+
+# Build output
+/bin/
+/harness
+*.test
+coverage.out
+
+# OS metadata
+.DS_Store
