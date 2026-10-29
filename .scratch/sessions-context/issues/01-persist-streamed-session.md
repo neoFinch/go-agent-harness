@@ -47,3 +47,7 @@ No implementation started.
 ### ADK evaluation evidence
 
 Branch `prototype/adk-evaluation` contains [six offline ADK Go integration probes](../../../experiments/adk-prototype/README.md) against v2.6.0. Streaming, SQLite reload, tool execution with a sequential override, an OpenAI HTTP-stub contract, and compaction-record persistence worked. Default session storage does not retain partial streamed output on failure; S01 still needs explicit partial/failure capture. This is an evaluation, not completion of this ticket or approval to replace the current architecture.
+
+### Follow-up capture experiment
+
+The same prototype branch now contains a harness-owned streamed-turn capture journal. Five capture tests verify partial-disconnect durability, successful reply deduplication, cancellation, and storage failures; all six baseline probes still pass (11 total). Original failed input and visible output survive journal reopen without inserting an unfinished reply into successful ADK history. This is evidence for S01, not ticket completion: real CLI wiring, full transcript/schema decisions, atomic coordination with ADK storage, and crash recovery remain outstanding.

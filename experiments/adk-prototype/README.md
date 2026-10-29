@@ -74,3 +74,28 @@ No production specification or ticket was marked implemented. S01 has a pointer 
 - [Session database at v2.6.0](https://github.com/google/adk-go/blob/v2.6.0/session/database/service.go)
 - [Compaction configuration at v2.6.0](https://github.com/google/adk-go/blob/v2.6.0/session/compaction/compaction.go)
 - [Task runner override at v2.6.0](https://github.com/google/adk-go/blob/v2.6.0/platform/exec.go)
+
+
+## Follow-up: interrupted-stream capture
+
+A harness-owned `RunCaptured` integration was added after demonstrating a failing test: partial text was visible but no capture transcript existed. The first test now passes, along with four further capture checks and all six baseline probes (11 tests total).
+
+The append-only JSONL capture journal stores a stable turn ID, session ID, original prompt, visible text chunks, and a terminal status. Chunks are written, synced, and closed before being delivered to the display callback. Readers reopen the journal through `LoadTranscript`; a begin record without a finish record is represented as `incomplete`, not as a successful reply.
+
+Verified behaviors:
+
+- Injected stream disconnect preserves the original prompt and both visible text chunks with `failed` status and error information.
+- That unfinished reply is not inserted into successful ADK conversation history.
+- Completed streamed replies are recorded once, without repeating the aggregated final text; non-streamed final-only text is also captured.
+- Cancellation records the already-visible text and `cancelled` status.
+- Failure to create the journal prevents the model request from starting.
+- A write failure between chunks prevents the unsaved chunk from being displayed and leaves previous records recoverable as incomplete.
+
+Remaining limitations:
+
+- This is a single-writer prototype wrapper, not yet wired into the real CLI or the planned session controller. S01 remains unimplemented.
+- The capture journal and ADK's event store are separate writes, not an atomic transaction. A failure after ADK persists a final event can leave the two stores with different completion information.
+- There is no automatic replay/resumption of interrupted generation, no tool-event journal, and no guarantee of durable writes to a filesystem that is itself failing.
+- Torn/corrupt JSON records are reported as errors, not automatically repaired. Crash/power-loss recovery has not been simulated.
+- Syncing each chunk favors evidence of durability over throughput; batching policy requires a later decision.
+- The interruption tests use a scripted ADK model. Live-provider disconnections, token-limit truncation, and incomplete terminal responses still need provider-specific tests.
