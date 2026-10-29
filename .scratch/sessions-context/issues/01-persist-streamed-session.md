@@ -43,3 +43,7 @@ Features assigned to other tickets, general file edits, shell execution, MCP, se
 ## Comments
 
 No implementation started.
+
+### ADK evaluation evidence
+
+Branch `prototype/adk-evaluation` contains [six offline ADK Go integration probes](../../../experiments/adk-prototype/README.md) against v2.6.0. Streaming, SQLite reload, tool execution with a sequential override, an OpenAI HTTP-stub contract, and compaction-record persistence worked. Default session storage does not retain partial streamed output on failure; S01 still needs explicit partial/failure capture. This is an evaluation, not completion of this ticket or approval to replace the current architecture.
