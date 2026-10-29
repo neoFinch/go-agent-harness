@@ -16,6 +16,37 @@ go test -C experiments/adk-prototype -v -count=1 -timeout=90s ./...
 
 First execution may download a compatible Go toolchain and dependencies. Tests use a scripted model, temporary project files, temporary SQLite databases, and a localhost HTTP stub. No API key or paid model call is needed. Tests clean up their temporary data.
 
+## Interactive offline demo
+
+From the evaluation worktree root:
+
+```sh
+go run -C experiments/adk-prototype ./cmd/demo
+```
+
+Try these commands in order:
+
+1. `/success` — watch the text arrive in chunks, then see the saved turn marked `completed`.
+2. `/fail` — watch a partial reply followed by an intentional connection error; the saved turn is marked `failed` and retains its text.
+3. `/transcript` — reopen the journal from disk and display the saved turns.
+4. `/exit` — exit without deleting the journal.
+
+The demo prints the absolute journal path. To inspect that file after restarting:
+
+```sh
+go run -C experiments/adk-prototype ./cmd/demo -transcript /absolute/path/to/transcript.jsonl
+```
+
+Then enter `/transcript`. The journal normally lives in a newly created temporary directory and remains after exit, though the OS may eventually clean temporary files. Use `-transcript` with a path in an existing durable directory if you want to retain it longer. Do not run concurrent instances against the same journal.
+
+This is a scripted model, not a live assistant: it demonstrates capture mechanics, not answer quality or provider-network behavior. ADK conversation state is in memory in this demo. Reopening a journal lets you inspect previous captures; it does **not** resume the old ADK session. SQLite session reload is covered separately by the integration probe.
+
+Ctrl+C during streaming cancels the turn and records the visible text with `cancelled` status before exiting. A fast noninteractive smoke run is:
+
+```sh
+printf '/success\n/fail\n/transcript\n/exit\n' | go run -C experiments/adk-prototype ./cmd/demo -delay 0
+```
+
 ## Observed results
 
 All six probes passed:
