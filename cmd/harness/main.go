@@ -34,7 +34,13 @@ func runCLI(ctx context.Context, args []string, input io.Reader, output, errorOu
 		defaultModel = "gpt-4o-mini"
 	}
 	modelName := flags.String("model", defaultModel, "OpenAI model name (or OPENAI_MODEL)")
+	resumeID := flags.String("resume", "", "Resume a saved session ID (saved model takes precedence)")
 	dataDir := flags.String("data-dir", ".harness", "Project-local session data directory")
+	flags.Usage = func() {
+		fmt.Fprint(errorOutput, "Usage: harness [flags]\n\n")
+		flags.PrintDefaults()
+		fmt.Fprint(errorOutput, "\n"+commandHelp)
+	}
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return nil
@@ -44,7 +50,9 @@ func runCLI(ctx context.Context, args []string, input io.Reader, output, errorOu
 	if flags.NArg() != 0 {
 		return errors.New("unexpected arguments; run harness -h for usage")
 	}
+	var factory func(context.Context, string) (model.LLM, error)
 	if llm == nil {
+		factory = func(ctx context.Context, name string) (model.LLM, error) { return openaimodel.NewModel(ctx, name, nil) }
 		var err error
 		// ADK's official adapter reads OPENAI_API_KEY and OPENAI_BASE_URL.
 		llm, err = openaimodel.NewModel(ctx, *modelName, nil)
@@ -56,13 +64,18 @@ func runCLI(ctx context.Context, args []string, input io.Reader, output, errorOu
 	if err != nil {
 		return err
 	}
-	controller, err := harness.Open(ctx, harness.Config{DataDir: path, Model: llm})
+	controller, err := harness.Open(ctx, harness.Config{DataDir: path, Model: llm, SessionID: *resumeID, ModelFactory: factory})
 	if err != nil {
 		return fmt.Errorf("start harness: %w", err)
 	}
 	defer controller.Close()
-	if _, err := fmt.Fprintf(output, "Harness ready. Type 'exit' to quit, /clear to clear active context.\nSession: %s\nSaved in: %s\n", controller.SessionID(), filepath.Join(path, "sessions.sqlite")); err != nil {
+	if _, err := fmt.Fprintf(output, "Harness ready. Type /help for commands, exit to quit.\nSession: %s\nSaved in: %s\n", controller.SessionID(), filepath.Join(path, "sessions.sqlite")); err != nil {
 		return err
+	}
+	if *resumeID != "" {
+		if err := showSession(output, "Resumed session", controller); err != nil {
+			return err
+		}
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -109,12 +122,11 @@ func runCLI(ctx context.Context, args []string, input io.Reader, output, errorOu
 			continue
 		case "exit", "/exit":
 			return nil
-		case "/clear":
-			if err := controller.Clear(ctx); err != nil {
-				fmt.Fprintln(errorOutput, "Clear failed:", err)
-			} else {
-				if _, err := fmt.Fprintln(output, "Active context cleared. Saved transcript retained."); err != nil {
-					return err
+		}
+		if strings.HasPrefix(prompt, "/") {
+			if err := runCommand(ctx, prompt, controller, output); err != nil {
+				if _, writeErr := fmt.Fprintln(errorOutput, "Command failed:", err); writeErr != nil {
+					return writeErr
 				}
 			}
 			continue
@@ -145,5 +157,79 @@ func runCLI(ctx context.Context, args []string, input io.Reader, output, errorOu
 		if ctx.Err() != nil {
 			return nil
 		}
+	}
+}
+
+const commandHelp = `Commands:
+  /help           Show this help
+  /sessions       List saved sessions in this data directory (* is active)
+  /new            Start a new session using the startup model default
+  /resume <id>    Resume a saved session and its model/context
+  /clear          Reset active context; retain session and saved transcript
+  /exit or exit   Exit
+`
+
+func showSession(out io.Writer, label string, c *harness.Controller) error {
+	_, err := fmt.Fprintf(out, "%s: %s\nModel: %s\n", label, c.SessionID(), c.Settings().Model)
+	return err
+}
+
+func runCommand(ctx context.Context, prompt string, c *harness.Controller, out io.Writer) error {
+	parts := strings.Fields(prompt)
+	switch parts[0] {
+	case "/resume":
+		if len(parts) != 2 {
+			return errors.New("usage: /resume <id>; use /sessions to list IDs")
+		}
+		if err := c.Resume(ctx, parts[1]); err != nil {
+			return err
+		}
+		return showSession(out, "Resumed session", c)
+	case "/new":
+		if len(parts) != 1 {
+			return errors.New("usage: /new")
+		}
+		if err := c.NewSession(ctx); err != nil {
+			return err
+		}
+		return showSession(out, "New session", c)
+	case "/sessions":
+		if len(parts) != 1 {
+			return errors.New("usage: /sessions")
+		}
+		sessions, err := c.Sessions(ctx)
+		if err != nil {
+			return fmt.Errorf("list sessions: %w", err)
+		}
+		if _, err := fmt.Fprintln(out, "Saved sessions (most recently updated first):"); err != nil {
+			return err
+		}
+		for _, s := range sessions {
+			marker := " "
+			if s.ID == c.SessionID() {
+				marker = "*"
+			}
+			if _, err := fmt.Fprintf(out, "%s %s  %s\n", marker, s.ID, s.UpdatedAt.Local().Format("2006-01-02 15:04:05")); err != nil {
+				return err
+			}
+		}
+		return nil
+	case "/clear":
+		if len(parts) != 1 {
+			return errors.New("usage: /clear")
+		}
+		if err := c.Clear(ctx); err != nil {
+			return err
+		}
+		_, err := fmt.Fprintln(out, "Active context cleared. Saved transcript retained.")
+		return err
+	case "/help":
+		if len(parts) != 1 {
+			return errors.New("usage: /help")
+		}
+		_, err := fmt.Fprint(out, commandHelp)
+		return err
+	default:
+		return fmt.Errorf("unknown command %q; type /help", parts[0])
 	}
 }

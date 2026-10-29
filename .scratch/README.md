@@ -16,7 +16,7 @@ The dependency graph and user-story coverage below remain unchanged. S01 now mig
 
 ## Suggested order
 
-S01 is resolved: the real CLI runs through ADK and persists streamed turns. S02 (session discovery/resume) is the next unblocked slice. S01–S03 establish a persisted, budgeted conversation. Then compaction, read/search, and explicit memory can advance as their prerequisites allow; execution remains incremental and no concurrent agents are implied.
+S01 and S02 are resolved: the real CLI runs through ADK, persists streamed turns, and supports new/list/resume with saved model and context. S03 (budget settings and preflight) is the next unblocked slice. S01–S03 establish a persisted, budgeted conversation. Then compaction, read/search, and explicit memory can advance as their prerequisites allow; execution remains incremental and no concurrent agents are implied.
 
 | Ticket | Outcome | Blocked by |
 |---|---|---|
@@ -74,7 +74,7 @@ Story numbers below refer to the user-story list in each feature spec. Shared nu
 
 ## Open choices carried forward
 
-- S01–S02: storage, crash/partial-stream recovery, session commands. `/clear` as an alias for a new session remains unconfirmed.
+- S01–S02: initial storage/recovery rules and session commands are documented in the root README and resolved tickets. `/clear` as an alias for a new session remains unconfirmed; `/new` is the explicit distinct-session command. Automatic crash repair remains future work.
 - S03: default total context budget, K units, percentage validation/rounding, counting strategy and unknown model capabilities.
 - S04–S06: bounded summarization requests, no-progress recovery, and transactional setting changes.
 - T01–T06: tool contracts, result caps, continuation, permissions and interrupted tool-turn behavior.

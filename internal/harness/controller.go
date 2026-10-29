@@ -15,10 +15,8 @@ import (
 
 	"github.com/glebarez/sqlite"
 	"google.golang.org/adk/v2/agent"
-	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/platform"
-	"google.golang.org/adk/v2/plugin"
 	"google.golang.org/adk/v2/runner"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/adk/v2/session/database"
@@ -32,7 +30,11 @@ const userID = "local"
 
 type Config struct {
 	DataDir string
-	Model   model.LLM
+	// Model supplies the startup/new-session default, independently of resumed settings.
+	Model     model.LLM
+	SessionID string
+	// ModelFactory restores saved model choices that differ from Model.Name().
+	ModelFactory func(context.Context, string) (model.LLM, error)
 }
 
 // Turn supplements ADK's structured events with visible output and completion
@@ -52,20 +54,26 @@ type Turn struct {
 func (Turn) TableName() string { return "harness_turns" }
 
 type Controller struct {
-	mu         sync.Mutex
-	db         *gorm.DB
-	connection *sql.DB
-	runtime    *runner.Runner
-	service    session.Service
-	sessionID  string
-	active     *Turn
+	mu           sync.Mutex
+	db           *gorm.DB
+	connection   *sql.DB
+	runtime      *runner.Runner
+	service      session.Service
+	sessionID    string
+	active       *Turn
+	defaults     model.LLM
+	modelFactory func(context.Context, string) (model.LLM, error)
+	state        savedState
 }
 
-// Open starts a new ADK session. Session discovery/resume are a later feature.
+// Open opens local storage and starts a new ADK session, or resumes SessionID.
 // The caller owns the controller and must Close it when finished.
 func Open(ctx context.Context, cfg Config) (*Controller, error) {
 	if cfg.Model == nil {
 		return nil, errors.New("model is required")
+	}
+	if strings.TrimSpace(cfg.Model.Name()) == "" {
+		return nil, errors.New("model name is required")
 	}
 	if cfg.DataDir == "" {
 		return nil, errors.New("data directory is required")
@@ -112,26 +120,12 @@ func Open(ctx context.Context, cfg Config) (*Controller, error) {
 	if err := db.WithContext(ctx).AutoMigrate(&Turn{}); err != nil {
 		return nil, err
 	}
-	created, err := svc.Create(ctx, &session.CreateRequest{AppName: appName, UserID: userID})
-	if err != nil {
-		return nil, err
+	c := &Controller{db: db, connection: connection, service: svc, defaults: cfg.Model, modelFactory: cfg.ModelFactory}
+	if cfg.SessionID == "" {
+		err = c.NewSession(ctx)
+	} else {
+		err = c.Resume(ctx, cfg.SessionID)
 	}
-	c := &Controller{db: db, connection: connection, sessionID: created.Session.ID(), service: svc}
-	a, err := llmagent.New(llmagent.Config{Name: "harness", Model: cfg.Model, BeforeModelCallbacks: []llmagent.BeforeModelCallback{c.activeHistory}})
-	if err != nil {
-		return nil, err
-	}
-	// ADK v2.6.0 writes event.Actions.Compaction in Runner while its producer
-	// may still inspect the original event. Return a value copy through the
-	// supported plugin hook so that Runner modifies its own EventActions.
-	isolate, err := plugin.New(plugin.Config{Name: "isolate-runner-events", OnEventCallback: func(_ agent.InvocationContext, event *session.Event) (*session.Event, error) {
-		copied := *event
-		return &copied, nil
-	}})
-	if err != nil {
-		return nil, err
-	}
-	c.runtime, err = runner.New(runner.Config{AppName: appName, Agent: a, SessionService: svc, PluginConfig: runner.PluginConfig{Plugins: []*plugin.Plugin{isolate}}})
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +149,23 @@ func (c *Controller) Transcript(ctx context.Context, sessionID string) ([]Turn, 
 func (c *Controller) Clear(ctx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.db.WithContext(ctx).Create(&Turn{ID: rand.Text(), SessionID: c.sessionID, Kind: "clear", Status: "completed"}).Error
+	next := c.state
+	err := c.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		marker := &Turn{ID: rand.Text(), SessionID: c.sessionID, Kind: "clear", Status: "completed"}
+		if err := tx.Create(marker).Error; err != nil {
+			return err
+		}
+		next.ClearedThrough = marker.Sequence
+		svc, err := database.NewSessionServiceFromDB(tx)
+		if err != nil {
+			return err
+		}
+		return writeState(ctx, svc, c.sessionID, next)
+	})
+	if err == nil {
+		c.state = next
+	}
+	return err
 }
 
 // activeHistory uses ADK events as the history source, with our success/clear
@@ -171,12 +181,8 @@ func (c *Controller) activeHistory(ctx agent.Context, req *model.LLMRequest) (*m
 		}
 		c.active.InvocationID = invocation
 	}
-	var cutoff uint64
-	if err := c.db.WithContext(ctx).Model(&Turn{}).Where("session_id = ? AND kind = ?", c.sessionID, "clear").Select("COALESCE(MAX(sequence), 0)").Scan(&cutoff).Error; err != nil {
-		return nil, err
-	}
 	var completed []string
-	if err := c.db.WithContext(ctx).Model(&Turn{}).Where("session_id = ? AND kind = ? AND status = ? AND sequence > ?", c.sessionID, "turn", "completed", cutoff).Pluck("invocation_id", &completed).Error; err != nil {
+	if err := c.db.WithContext(ctx).Model(&Turn{}).Where("session_id = ? AND kind = ? AND status = ? AND sequence > ?", c.sessionID, "turn", "completed", c.state.ClearedThrough).Pluck("invocation_id", &completed).Error; err != nil {
 		return nil, err
 	}
 	allowed := map[string]bool{invocation: true}
